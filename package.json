@@ -9,7 +9,8 @@
     "start": "node run.js",
     "lint": "eslint . --ext .js",
     "build": "echo 'Building Heavens Above project...'",
-    "generate": "echo 'Generating static output for Heavens Above...'"
+    "generate": "echo 'Generating static output for Heavens Above...'",
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
