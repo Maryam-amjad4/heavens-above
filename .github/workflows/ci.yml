@@ -1,45 +1,72 @@
-name: Heavens Above - Continuous Integration
+name: CI
+
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
 jobs:
-  ci-pipeline:
+  test:
+    name: Lint and Test
     runs-on: ubuntu-latest
+    
     steps:
-      - name:  Checkout Repository
-        uses: actions/checkout@v4
-
-      - name:  Set Up Node.js Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name:  Install Dependencies
-        run: npm ci
-
-      - name:  Lint Code
-        run: npm run lint
-
-      - name:  Build Project
-        run: npm run build
-
-      - name:  Generate Static Output
-        run: npm run generate
-
-      - name:  Verify Output Directory
-        run: |
-          if [ ! -d ".output" ]; then
-            echo " Build output not found!"
-            exit 1
-          else
-            echo " Build output directory verified."
-          fi
-
-      - name:  Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: heavens-above-build
-          path: .output/
+    # Checkout repository
+    - uses: actions/checkout@v4
+    
+    # Setup Node.js environment
+    - name: Setup Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    # Install dependencies
+    - name: Install Dependencies
+      run: npm ci
+    
+    # Run ESLint
+    - name: Run Linting
+      run: npm run lint
+      id: lint
+      continue-on-error: true
+    
+    # Run Jest tests with JUnit reporter
+    - name: Run Tests
+      run: npm test -- --reporters=default --reporters=jest-junit
+      id: test
+      continue-on-error: true
+    
+    # Upload test results artifact
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: junit.xml
+    
+    # Generate job summary
+    - name: Generate Job Summary
+      if: always()
+      run: |
+        echo "# CI Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ steps.lint.outcome }}" == "success" ]; then
+          echo "- [PASS] Linting passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- [FAIL] Linting failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        if [ "${{ steps.test.outcome }}" == "success" ]; then
+          echo "- [PASS] Tests passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- [FAIL] Tests failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+    # Fail the workflow if any check failed
+    - name: Check Status
+      if: always()
+      run: |
+        if [ "${{ steps.lint.outcome }}" != "success" ] || [ "${{ steps.test.outcome }}" != "success" ]; then
+          exit 1
+        fi
