@@ -24,38 +24,37 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create output directory
-        run: mkdir -p .output
+      # Create necessary directories
+      - name: Setup directories
+        run: |
+          mkdir -p .output
+          mkdir -p test-results
 
       - name: Run Linting
         id: lint
         continue-on-error: true
         run: npm run lint
 
-      - name: Run Tests (Jest with junit reporter)
+      - name: Run Tests
         id: test
         continue-on-error: true
         run: |
-          mkdir -p test-results
-          # Run tests; the jest-junit reporter will produce junit.xml by default
+          # Run tests with jest-junit reporter
           npm test -- --reporters=default --reporters=jest-junit || true
-          # Move junit.xml into test-results if it's in the repo root
+          # Move junit.xml into test-results if it exists
           if [ -f junit.xml ]; then
             mv junit.xml test-results/junit.xml
           fi
 
-      - name: Ensure junit exists (prevent artifact upload failure)
+      - name: Create placeholder test results
         if: always()
         run: |
           if [ ! -f test-results/junit.xml ]; then
-            echo "No junit test result produced — creating placeholder so artifact upload won't fail."
-            mkdir -p test-results
-            cat > test-results/junit.xml <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuites>
-  <testsuite name="placeholder" tests="0" failures="0" skipped="0"/>
-</testsuites>
-EOF
+            echo "Creating placeholder test results file"
+            echo '<?xml version="1.0" encoding="UTF-8"?>' > test-results/junit.xml
+            echo '<testsuites>' >> test-results/junit.xml
+            echo '  <testsuite name="placeholder" tests="0" failures="0" skipped="0"/>' >> test-results/junit.xml
+            echo '</testsuites>' >> test-results/junit.xml
           fi
 
       - name: Upload test results
@@ -65,7 +64,7 @@ EOF
           name: test-results
           path: test-results/junit.xml
 
-      - name: Upload .output (optional)
+      - name: Upload build output
         if: always()
         uses: actions/upload-artifact@v4
         with:
