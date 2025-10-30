@@ -1,53 +1,55 @@
 name: Code Review Workflow
 
-# This workflow runs automatically on every Pull Request to the main branch.
-# It performs linting, security auditing, and static analysis to ensure
-# code quality before merging.
-
 on:
+  push:
+    branches:
+      - main
+      - dev
   pull_request:
-    branches: [ main ]     # Trigger only when a PR targets the main branch
+    branches:
+      - main
+      - dev
 
 jobs:
   review:
     name: Lint and Security Review
-    runs-on: ubuntu-latest  # Use latest Ubuntu environment
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository              # Step 1: Fetch latest PR code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js                    # Step 2: Configure Node.js environment
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20                     # Use Node.js version 20 for ESLint and CodeQL compatibility
-          cache: 'npm'                         # Cache dependencies for faster workflow runs
+          node-version: 20
+          cache: 'npm'
 
-      - name: Install dependencies             # Step 3: Install required project dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Run linting                      # Step 4: Check syntax, formatting, and unused variables
+      - name: Run linting
         run: npm run lint
 
-      - name: Run security audit               # Step 5: Scan dependencies for known vulnerabilities
+      - name: Run security audit
         run: npm audit --production
 
-      - name: Static analysis (CodeQL)         # Step 6: Initialize advanced static code analysis
+      - name: Initialize CodeQL analysis
         uses: github/codeql-action/init@v3
         with:
           languages: javascript
 
-      - name: CodeQL analyze                   # Step 7: Run CodeQL vulnerability analysis
+      - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
 
-      - name: Add review summary comment       # Step 8: Post automated review summary comment to PR
-        if: always()
+      - name: Post review summary comment
+        if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           header: "### Code Review Summary"
           message: |
-            Lint and security checks completed automatically.
-            - ESLint status: ${{ job.status }}
+            Linting and security checks completed automatically.
+            - ESLint: ${{ job.status }}
             - npm audit: Run successful
-            - CodeQL scan: Completed
+            - CodeQL: Completed successfully
