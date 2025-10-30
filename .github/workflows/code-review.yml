@@ -1,0 +1,55 @@
+name: Code Review Workflow
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  review:
+    name: Lint and Security Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run security audit
+        run: npm audit --production
+
+      - name: Initialize CodeQL analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+
+      - name: Post review summary comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          header: "### Code Review Summary"
+          message: |
+            Linting and security checks completed automatically.
+            - ESLint: ${{ job.status }}
+            - npm audit: Run successful
+            - CodeQL: Completed successfully
