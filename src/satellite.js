@@ -1,7 +1,7 @@
-const request = require("request");
-const cheerio = require("cheerio");
-const fs = require("fs");
-const utils = require("./utils");
+import fetch from "node-fetch";
+import cheerio from "cheerio";
+import fs from "fs";
+import utils from "./utils.js";
 
 const property = ["url", "date", "brightness", "events", "passType", "image", "scoreData", "exist", "score", "id"];
 const events = ["rise", "reachAltitude10deg", "highestPoint", "dropBelowAltitude10deg", "set", "exitShadow", "enterShadow"];
@@ -38,8 +38,15 @@ function getTable(config) {
 	} else {
 		options = utils.post_options(`PassSummary.aspx?satid=${config.target}&`, opt);
 	}
-	request(options, (error, response, body) => {
-		if (error || response.statusCode !== 200) return;
+	fetch(options.url, {
+		method: options.method || 'GET',
+		headers: options.headers,
+		body: options.body
+	}).then(response => {
+		if (!response.ok) return;
+		return response.text();
+	}).then(body => {
+		if (!body) return;
 		const $ = cheerio.load(body, {
 			decodeEntities: false
 		});
@@ -57,12 +64,18 @@ function getTable(config) {
 		});
 		function factory(temp) {
 			return new Promise((resolve, reject) => {
-				request(utils.image_options(temp[property[0]]), (error, response, body) => {
-                    if (error || response.statusCode !== 200) {
-						reject(error);
+				fetch(utils.image_options(temp[property[0]]).url).then(response => {
+					if (!response.ok) {
+						reject(new Error(`HTTP error! status: ${response.status}`));
 						return;
 					}
-                    console.log("Success", temp);
+					return response.text();
+				}).then(body => {
+					if (!body) {
+						reject(new Error('No body'));
+						return;
+					}
+					console.log("Success", temp);
 
                     const $ = cheerio.load(body, {
 						decodeEntities: false
@@ -108,11 +121,14 @@ function getTable(config) {
                     fs.appendFile(basedir + id + ".html", table.html(), (err) => {
 						if (err) console.log(err);
 					}); //保存表格
-                    request.get(utils.image_options(temp[property[5]])).pipe(fs.createWriteStream(basedir + id + ".png", {
-						"flags": "a"
-					})).on("error", (err) => {
-						console.error(err);
-					}); //下载图片
+                    fetch(utils.image_options(temp[property[5]]).url)
+						.then(response => response.arrayBuffer())
+						.then(buffer => {
+							fs.writeFile(basedir + id + ".png", Buffer.from(buffer), { flag: "a" }, (err) => {
+								if (err) console.error(err);
+							});
+						})
+						.catch(err => console.error(err)); //下载图片
                     resolve(temp);
                 });
 			});

@@ -1,7 +1,7 @@
-const request = require("request");
-const cheerio = require("cheerio");
-const fs = require("fs");
-const utils = require("./utils");
+import fetch from "node-fetch";
+import cheerio from "cheerio";
+import fs from "fs";
+import utils from "./utils.js";
 
 const eventsIridium = ["brightness", "altitude", "azimuth", "satellite", "distanceToFlareCentre", "brightnessAtFlareCentre", "date", "time", "distanceToSatellite", "AngleOffFlareCentre-line", "flareProducingAntenna", "sunAltitude", "angularSeparationFromSun", "image", "id"];
 
@@ -20,8 +20,15 @@ function getTable(config) {
 	} else {
 		options = utils.post_options("IridiumFlares.aspx?", opt);
 	}
-	request(options, (error, response, body) => {
-		if (error || response.statusCode !== 200) return;
+	fetch(options.url, {
+		method: options.method || 'GET',
+		headers: options.headers,
+		body: options.body
+	}).then(response => {
+		if (!response.ok) return;
+		return response.text();
+	}).then(body => {
+		if (!body) return;
 		const $ = cheerio.load(body, {
 			decodeEntities: false
 		});
@@ -38,9 +45,15 @@ function getTable(config) {
 		});
 		function factory(temp) {
 			return new Promise((resolve, reject) => {
-				request(utils.iridium_options(temp["url"]), (error, response, body) => {
-					if (error || response.statusCode !== 200) { //在无SessionID时返回500
-						reject(error);
+				fetch(utils.iridium_options(temp["url"]).url).then(response => {
+					if (!response.ok) { //在无SessionID时返回500
+						reject(new Error(`HTTP error! status: ${response.status}`));
+						return;
+					}
+					return response.text();
+				}).then(body => {
+					if (!body) {
+						reject(new Error("No body"));
 						return;
 					}
 					console.log("Success", temp);
@@ -65,11 +78,14 @@ function getTable(config) {
 					fs.appendFile(basedir + id + ".html", table.html(), (err) => {
 						if (err) console.log(err);
 					}); //保存表格
-					request.get(utils.image_options(temp[eventsIridium[13]])).pipe(fs.createWriteStream(basedir + id + ".png", {
-						"flags": "a"
-					})).on("error", (err) => {
-						console.error(err);
-					}); //下载图片
+					fetch(utils.image_options(temp[eventsIridium[13]]).url)
+						.then(response => response.arrayBuffer())
+						.then(buffer => {
+							fs.writeFile(basedir + id + ".png", Buffer.from(buffer), { flag: "a" }, (err) => {
+								if (err) console.error(err);
+							});
+						})
+						.catch(err => console.error(err)); //下载图片
 					resolve(temp);
 				});
 			});
