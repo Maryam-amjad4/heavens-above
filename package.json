@@ -2,10 +2,13 @@
   "name": "heavens-above",
   "version": "1.0.0",
   "private": true,
-  "description": "Scripts for scraping the Heavens Above website.",
+  "description": "Scripts for scraping data from the Heavens Above website.",
   "main": "run.js",
   "scripts": {
-    "start": "node run.js"
+    "start": "node run.js",
+    "lint": "eslint . --ext .js",
+    "build": "echo 'Building Heavens Above project...'",
+    "generate": "echo 'Generating static output for Heavens Above...'"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
@@ -17,7 +20,9 @@
   },
   "keywords": [
     "Heavens Above",
-    "spider"
+    "scraper",
+    "automation",
+    "GitHub Actions"
   ],
   "author": "Mimi <stevenjoezhang@gmail.com> (https://zhangshuqiao.org)",
   "license": "GPL-3.0-or-later",
@@ -26,6 +31,12 @@
   },
   "homepage": "https://github.com/PKUPI/heavens-above#readme",
   "engines": {
-    "node": ">=12.10.0"
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.38.0",
+    "@eslint/js": "^9.38.0",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^16.4.0"
   }
 }
