@@ -1,0 +1,66 @@
+name: Documentation Deployment
+
+# ------------------------------------------------------------
+# PURPOSE:
+# Automatically build and deploy project documentation
+# for the Heavens-Above repository using GitHub Pages.
+# ------------------------------------------------------------
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger from Actions tab
+
+permissions:
+  contents: write      # Required for committing to gh-pages branch
+  pages: write         # Required to deploy to GitHub Pages
+  id-token: write
+
+jobs:
+  build-docs:
+    name: Build and Deploy Docs
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1 — Checkout latest code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2 — Setup Node.js for generating docs
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # Step 3 — Install dependencies (if docs generator used)
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4 — Generate documentation
+      # (For this project, create a simple static docs folder)
+      - name: Generate static documentation
+        run: |
+          mkdir -p docs
+          echo "# Heavens Above Documentation" > docs/index.md
+          echo "## Overview" >> docs/index.md
+          echo "This project scrapes satellite data from the Heavens Above website using Node.js." >> docs/index.md
+          echo "Generated on $(date)" >> docs/index.md
+
+      # Step 5 — Configure Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # Step 6 — Upload docs artifact
+      - name: Upload artifact for Pages deployment
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    name: Deploy Docs to GitHub Pages
+    needs: build-docs
+    runs-on: ubuntu-latest
+    steps:
+      # Step 7 — Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
