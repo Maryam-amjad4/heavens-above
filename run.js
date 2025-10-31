@@ -18,3 +18,16 @@ iridium.getTable({
 	root: "./public/data/"
 });
 */
+import satellite from './src/satellite.js';
+
+async function main() {
+  try {
+    await satellite.startScraping();
+    console.log('Scraping completed successfully');
+  } catch (error) {
+    console.error('Scraping failed:', error);
+    process.exit(1);
+  }
+}
+
+main();

@@ -2,7 +2,6 @@
   "name": "heavens-above",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "description": "Scripts for scraping data from the Heavens Above website.",
   "main": "run.js",
   "scripts": {
