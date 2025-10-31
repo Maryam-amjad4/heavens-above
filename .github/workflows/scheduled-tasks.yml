@@ -1,0 +1,74 @@
+name: Scheduled Maintenance Tasks
+
+# ------------------------------------------------------------
+# PURPOSE:
+# Run scheduled maintenance tasks for Heavens-Above automatically.
+# - Triggered daily at 2:50 PM Pakistan Time (9:50 AM UTC)
+# - Performs dependency checks, cleanup, and verification scripts.
+# - Generates logs and uploads them as workflow artifacts.
+# ------------------------------------------------------------
+
+on:
+  schedule:
+    # Every day at 9:50 AM UTC (2:50 PM Pakistan Time)
+    - cron: '50 9 * * *'
+
+  workflow_dispatch:   # Allow manual run for testing
+    inputs:
+      reason:
+        description: 'Optional reason for manual maintenance run'
+        required: false
+        default: 'Manual trigger by user'
+
+jobs:
+  maintenance:
+    name: Daily Maintenance Job
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1 — Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2 — Setup Node.js environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      # Step 3 — Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4 — Run dependency audit
+      - name: Run dependency audit
+        continue-on-error: true
+        run: |
+          echo "=== Starting daily dependency audit ==="
+          npm audit --production > audit-report.txt || true
+          echo "=== Audit complete ==="
+
+      # Step 5 — Run custom maintenance or cleanup tasks
+      - name: Execute maintenance script
+        continue-on-error: true
+        run: |
+          echo "Running maintenance verification..."
+          node run.js || echo "Script finished with warnings."
+
+      # Step 6 — Upload logs for reference
+      - name: Upload maintenance logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintenance-logs
+          path: |
+            audit-report.txt
+
+      # Step 7 — Post job summary to GitHub Actions UI
+      - name: Add job summary
+        if: always()
+        run: |
+          echo "### Scheduled Maintenance Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Scheduled Time: Daily at 2:50 PM PKT (9:50 AM UTC)" >> $GITHUB_STEP_SUMMARY
+          echo "- Audit Report: Uploaded as artifact" >> $GITHUB_STEP_SUMMARY
+          echo "- Maintenance Script: Executed with warnings allowed" >> $GITHUB_STEP_SUMMARY
