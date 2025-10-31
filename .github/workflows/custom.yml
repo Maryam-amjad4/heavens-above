@@ -43,7 +43,7 @@ jobs:
         run: |
           echo "Starting Heavens Above scraping for ${{ github.event.inputs.target }}"
           mkdir -p scraper_output
-          node run.js > scraper_output/output.txt
+          node run.cjs > scraper_output/output.txt
           echo "Data collected successfully at $(date)" >> scraper_output/output.txt
 
       # Step 5 — Upload the scraped output as an artifact
