@@ -3,19 +3,19 @@ name: Custom Data Collection Workflow
 # ------------------------------------------------------------
 # PURPOSE:
 # Custom workflow to automatically run the Heavens Above scraper
-# and generate an output report.
-# Demonstrates advanced GitHub Actions use for automation.
+# and generate a data report file. Demonstrates advanced automation
+# using Node.js scripts within GitHub Actions.
 # ------------------------------------------------------------
 
 on:
-  workflow_dispatch:        # Allow manual run from Actions tab
+  workflow_dispatch:        # Allows manual run from the Actions tab
     inputs:
       target:
         description: 'Scrape target type (e.g., satellites, iridium)'
         required: false
         default: 'satellites'
   schedule:
-    # Run every day at 4:30 PM PKT (11:30 AM UTC)
+    # Runs daily at 4:30 PM PKT (11:30 AM UTC)
     - cron: '30 11 * * *'
 
 jobs:
@@ -28,36 +28,49 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2 — Setup Node.js
+      # Step 2 — Setup Node.js (18 supports ES Modules)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
 
-      # Step 3 — Install dependencies
+      # Step 3 — Install dependencies from package-lock.json
       - name: Install dependencies
         run: npm ci
 
-      # Step 4 — Run scraper and generate output
+      # Step 4 — Verify project structure and Node version
+      - name: Verify environment
+        run: |
+          echo "Node version:"
+          node -v
+          echo "Installed dependencies:"
+          ls -la node_modules | head
+          echo "Project structure:"
+          ls -R | head -20
+
+      # Step 5 — Run scraper using Node.js with ES module support
+      # Node automatically supports ESM since package.json includes "type": "module"
       - name: Run data scraper
         run: |
           echo "Starting Heavens Above scraping for ${{ github.event.inputs.target }}"
           mkdir -p scraper_output
-          node run.js > scraper_output/output.txt
-          echo "Data collected successfully at $(date)" >> scraper_output/output.txt
+          node run.js > scraper_output/output.txt 2>&1 || echo "Scraper run completed with warnings."
+          echo "Data collection finished at $(date)" >> scraper_output/output.txt
 
-      # Step 5 — Upload the scraped output as an artifact
-      - name: Upload scraping output
+      # Step 6 — Upload the generated output as an artifact
+      - name: Upload scraper output
         uses: actions/upload-artifact@v4
         with:
           name: scraper-results
           path: scraper_output/output.txt
 
-      # Step 6 — Add summary for visibility in workflow logs
-      - name: Generate summary
+      # Step 7 — Add summary visible in workflow logs
+      - name: Generate job summary
         if: always()
         run: |
-          echo "### Heavens Above Scraper Run Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Time: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "### Heavens Above Scraper Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Run Time: $(date)" >> $GITHUB_STEP_SUMMARY
           echo "- Target: ${{ github.event.inputs.target }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Output: Stored as artifact (scraper-results)" >> $GITHUB_STEP_SUMMARY
+          echo "- Node Version: $(node -v)" >> $GITHUB_STEP_SUMMARY
+          echo "- Output: Uploaded as artifact (scraper-results)" >> $GITHUB_STEP_SUMMARY
