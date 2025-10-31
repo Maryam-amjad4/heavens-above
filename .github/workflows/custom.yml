@@ -1,0 +1,63 @@
+name: Custom Data Collection Workflow
+
+# ------------------------------------------------------------
+# PURPOSE:
+# Custom workflow to automatically run the Heavens Above scraper
+# and generate an output report.
+# Demonstrates advanced GitHub Actions use for automation.
+# ------------------------------------------------------------
+
+on:
+  workflow_dispatch:        # Allow manual run from Actions tab
+    inputs:
+      target:
+        description: 'Scrape target type (e.g., satellites, iridium)'
+        required: false
+        default: 'satellites'
+  schedule:
+    # Run every day at 4:30 PM PKT (11:30 AM UTC)
+    - cron: '30 11 * * *'
+
+jobs:
+  run-scraper:
+    name: Run Heavens Above Scraper
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1 — Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2 — Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # Step 3 — Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4 — Run scraper and generate output
+      - name: Run data scraper
+        run: |
+          echo "Starting Heavens Above scraping for ${{ github.event.inputs.target }}"
+          mkdir -p scraper_output
+          node run.js > scraper_output/output.txt
+          echo "Data collected successfully at $(date)" >> scraper_output/output.txt
+
+      # Step 5 — Upload the scraped output as an artifact
+      - name: Upload scraping output
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-results
+          path: scraper_output/output.txt
+
+      # Step 6 — Add summary for visibility in workflow logs
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "### Heavens Above Scraper Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Time: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- Target: ${{ github.event.inputs.target }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Output: Stored as artifact (scraper-results)" >> $GITHUB_STEP_SUMMARY
