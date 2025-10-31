@@ -21,7 +21,7 @@ function getTable(config) {
 		options = utils.post_options("IridiumFlares.aspx?", opt);
 	}
 	fetch(options.url, {
-		method: options.method || 'GET',
+		method: options.method || "GET",
 		headers: options.headers,
 		body: options.body
 	}).then(response => {

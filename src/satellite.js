@@ -39,7 +39,7 @@ function getTable(config) {
 		options = utils.post_options(`PassSummary.aspx?satid=${config.target}&`, opt);
 	}
 	fetch(options.url, {
-		method: options.method || 'GET',
+		method: options.method || "GET",
 		headers: options.headers,
 		body: options.body
 	}).then(response => {
@@ -72,7 +72,7 @@ function getTable(config) {
 					return response.text();
 				}).then(body => {
 					if (!body) {
-						reject(new Error('No body'));
+						reject(new Error("No body"));
 						return;
 					}
 					console.log("Success", temp);
