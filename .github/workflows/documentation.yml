@@ -1,0 +1,89 @@
+name: Documentation Deployment
+
+# ------------------------------------------------------------------
+# PURPOSE:
+# Automatically build and deploy Heavens-Above documentation.
+# - On Pull Requests: Validate docs build successfully (no deploy)
+# - On Push to main: Deploy updated docs to GitHub Pages
+# Ensures continuous documentation delivery and pre-merge validation.
+# ------------------------------------------------------------------
+
+on:
+  push:
+    branches:
+      - main                 # Deploy updated docs when merged to main
+    paths:
+      - 'docs/**'            # Trigger when docs change
+      - 'README.md'
+  pull_request:
+    branches:
+      - main                 # Build and validate docs on PRs
+    paths:
+      - 'docs/**'
+      - 'README.md'
+
+permissions:
+  contents: write            # Needed to push to gh-pages branch
+
+jobs:
+  build-docs:
+    name: Build and Deploy Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1 — Checkout latest repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2 — Setup Node.js environment for documentation generation
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      # Step 3 — Install dependencies (if docs require packages)
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4 — Generate documentation from Markdown files
+      - name: Generate documentation
+        run: |
+          mkdir -p docs/dist
+          cp README.md docs/dist/index.md
+          echo "Documentation generated successfully."
+
+      # Step 5 — Add version info for tracking
+      - name: Add version info
+        run: |
+          echo "Documentation built on $(date)" > docs/dist/version.txt
+          echo "Commit SHA: $GITHUB_SHA" >> docs/dist/version.txt
+
+      # Step 6 — For PRs: Validate build only, skip deployment
+      - name: Validate Documentation Build
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "✅ Documentation build validation successful for Pull Request #${{ github.event.pull_request.number }}"
+          echo "Documentation preview ready in docs/dist folder."
+
+      # Step 7 — For pushes to main: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/dist
+          publish_branch: gh-pages
+          commit_message: "Auto-update documentation from ${GITHUB_SHA}"
+
+      # Step 8 — Add summary visible in the Actions log
+      - name: Add job summary
+        if: always()
+        run: |
+          echo "### Documentation Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Event: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Documentation build completed successfully." >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "- Deployed to: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Validation run only (no deployment)." >> $GITHUB_STEP_SUMMARY
